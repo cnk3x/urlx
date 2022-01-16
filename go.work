@@ -1,0 +1,13 @@
+go 1.18
+
+use (
+	./
+	./charset
+	./codec/form
+	./codec/html
+	./codec/json
+	./codec/multipart
+	./codec/xml
+	./codec/yaml
+	./compress
+)
