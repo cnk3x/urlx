@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.0
-	github.com/cnk3x/urlx/types v0.0.0-20220124023107-6e2910cccc96
+	github.com/cnk3x/urlx/types v0.0.0-20220124023317-e17eac0392f5
 	github.com/valyala/fasttemplate v1.2.1
 )
 
