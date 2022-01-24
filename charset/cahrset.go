@@ -2,7 +2,6 @@ package urlx
 
 import (
 	"io"
-	"log"
 	"mime"
 	"net/http"
 	"strings"
@@ -12,26 +11,42 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const HeaderContentType = "Content-Type"
+const (
+	HeaderContentType = "Content-Type"
+	ParamCharset      = "charset"
+)
 
-type Process = func(resp *http.Response, body io.ReadCloser) error // 响应处理器
+type Process = func(resp *http.Response) error // 响应处理器
+type ProcessMw = func(next Process) Process
 
-func Decode(next Process) Process {
-	return func(resp *http.Response, body io.ReadCloser) error {
-		defer body.Close()
-		var r io.Reader = body
-		mimeType, params, _ := mime.ParseMediaType(resp.Header.Get(HeaderContentType))
-		if strings.HasPrefix(mimeType, "text/") && len(params) > 0 {
-			if charset := strings.TrimSpace(params["charset"]); charset != "" {
-				codec, err := htmlindex.Get(charset)
-				if err != nil {
-					log.Printf("not support charset: %s", charset)
-				} else if codec != unicode.UTF8 {
-					r = transform.NewReader(r, codec.NewDecoder())
-					resp.Header.Set(HeaderContentType, mimeType)
+// Charset 指定响应的编码，auto 或者空则通过 Content-Type 自动判断
+func Charset(charset string) ProcessMw {
+	getCharset := func(params map[string]string) string {
+		if charset == "" || charset == "auto" {
+			if len(params) > 0 {
+				if charset = strings.TrimSpace(params[ParamCharset]); charset != "" {
+					return charset
 				}
 			}
 		}
-		return next(resp, io.NopCloser(r))
+		return strings.ToLower(charset)
+	}
+
+	return func(next Process) Process {
+		return func(resp *http.Response) error {
+			var body = io.Reader(resp.Body)
+			mimeType, params, _ := mime.ParseMediaType(resp.Header.Get(HeaderContentType))
+			if cs := getCharset(params); cs != "" && cs != "UTF-8" {
+				if codec, err := htmlindex.Get(cs); err == nil && codec != unicode.UTF8 {
+					body = transform.NewReader(body, codec.NewDecoder())
+					resp.Header.Set(HeaderContentType, mimeType)
+					resp.Body = io.NopCloser(body)
+				}
+			}
+			return next(resp)
+		}
 	}
 }
+
+// AutoCharset 将响应解码成UTF-8
+var AutoCharset = Charset("auto")

@@ -79,7 +79,7 @@ func (c *Request) Query(query string) *Request {
 	return c
 }
 
-// SendBody 设置请求提交内容
+// Body 设置请求提交内容
 func (c *Request) Body(body Body) *Request {
 	c.buildBody = body
 	return c

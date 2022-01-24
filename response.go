@@ -7,8 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -16,11 +14,11 @@ import (
 /*处理响应*/
 
 type (
-	Process   = func(resp *http.Response, body io.ReadCloser) error // 响应处理器
-	ProcessMw = func(next Process) Process                          // 响应预处理器
+	Process   = func(resp *http.Response) error // 响应处理器
+	ProcessMw = func(next Process) Process      // 响应预处理器
 )
 
-var ProcessNil = func(resp *http.Response, body io.ReadCloser) error { return nil }
+var ProcessNil = func(resp *http.Response) error { return nil }
 
 // ProcessWith 在处理之前的预处理
 func (c *Request) ProcessWith(mws ...ProcessMw) *Request {
@@ -31,11 +29,11 @@ func (c *Request) ProcessWith(mws ...ProcessMw) *Request {
 // Status .
 func Status(processStatus func(status int) Process) ProcessMw {
 	return func(next Process) Process {
-		return func(resp *http.Response, body io.ReadCloser) error {
+		return func(resp *http.Response) error {
 			if process := processStatus(resp.StatusCode); process != nil {
-				return process(resp, body)
+				return process(resp)
 			}
-			return next(resp, body)
+			return next(resp)
 		}
 	}
 }
@@ -110,7 +108,9 @@ func (c *Request) Process(process Process) error {
 		break
 	}
 
-	defer resp.Body.Close()
+	body := resp.Body
+	defer closes(body)
+
 	if process == nil {
 		process = ProcessNil
 	}
@@ -118,37 +118,25 @@ func (c *Request) Process(process Process) error {
 		process = before(process)
 	}
 
-	return process(resp, io.NopCloser(resp.Body))
+	return process(resp)
 }
 
 // Bytes 处理响应字节
 func (c *Request) Bytes() (data []byte, err error) {
-	err = c.Process(func(resp *http.Response, body io.ReadCloser) (err error) {
+	err = c.Process(func(resp *http.Response) (err error) {
 		data, err = io.ReadAll(resp.Body)
 		return
 	})
 	return
 }
 
-// Download 下载到文件
-func (c *Request) Download(fn string) (err error) {
-	return c.Process(func(resp *http.Response, body io.ReadCloser) (err error) {
-		defer body.Close()
-		tempFn := fn + ".urlx_dl_temp"
-		if err = os.MkdirAll(filepath.Dir(tempFn), 0755); err != nil {
-			return
-		}
-
-		err = func() error {
-			f, err := os.Create(tempFn)
-			if err != nil {
-				return err
+//closes 静默关闭 io.Closer
+func closes(closer io.Closer, errPrintPrefix ...string) {
+	if closer != nil {
+		if err := closer.Close(); err != nil {
+			if len(errPrintPrefix) > 0 && errPrintPrefix[0] != "" {
+				log.Printf("「%s」 %s", errPrintPrefix, err)
 			}
-			defer f.Close()
-			_, err = io.Copy(f, resp.Body)
-			return err
-		}()
-
-		return os.Rename(tempFn, fn)
-	})
+		}
+	}
 }

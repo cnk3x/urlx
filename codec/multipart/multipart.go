@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-type MultipartBody struct {
+type Body struct {
 	getFile func() (field, filename string, fileBody io.ReadCloser, err error)
 	params  url.Values
 
@@ -21,21 +21,21 @@ type MultipartBody struct {
 	once sync.Once
 }
 
-func Multipart() *MultipartBody {
-	return &MultipartBody{}
+func Multipart() *Body {
+	return &Body{}
 }
 
-func (m *MultipartBody) Params(params url.Values) *MultipartBody {
+func (m *Body) Params(params url.Values) *Body {
 	m.params = params
 	return m
 }
 
-func (m *MultipartBody) File(getFile func() (field, filename string, fileBody io.ReadCloser, err error)) *MultipartBody {
+func (m *Body) File(getFile func() (field, filename string, fileBody io.ReadCloser, err error)) *Body {
 	m.getFile = getFile
 	return m
 }
 
-func (m *MultipartBody) LocalFile(field string, filename string) *MultipartBody {
+func (m *Body) LocalFile(field string, filename string) *Body {
 	m.getFile = func() (field string, filename string, fileBody io.ReadCloser, err error) {
 		name := filepath.Base(filename)
 		f, err := os.Open(filename)
@@ -47,12 +47,12 @@ func (m *MultipartBody) LocalFile(field string, filename string) *MultipartBody 
 	return m
 }
 
-func (m *MultipartBody) Body() (contentType string, body io.Reader, err error) {
+func (m *Body) Body() (contentType string, body io.Reader, err error) {
 	m.once.Do(m.init)
 	return m.mw.FormDataContentType(), io.NopCloser(m.r), nil
 }
 
-func (m *MultipartBody) WaitEnd(ctx context.Context) error {
+func (m *Body) WaitEnd(ctx context.Context) error {
 	m.once.Do(m.init)
 	select {
 	case <-ctx.Done():
@@ -62,7 +62,7 @@ func (m *MultipartBody) WaitEnd(ctx context.Context) error {
 	}
 }
 
-func (m *MultipartBody) init() {
+func (m *Body) init() {
 	m.r, m.w = io.Pipe()
 	m.mw = multipart.NewWriter(m.w)
 	m.done = make(chan error, 1)
@@ -74,7 +74,7 @@ func (m *MultipartBody) init() {
 	}()
 }
 
-func (m *MultipartBody) readFile() error {
+func (m *Body) readFile() error {
 	for key, values := range m.params {
 		for _, value := range values {
 			if err := m.mw.WriteField(key, value); err != nil {
