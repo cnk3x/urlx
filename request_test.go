@@ -154,7 +154,7 @@ func TestDownload(t *testing.T) {
 	defer closer()
 	fn := "testdata/some"
 	defer func() { _ = os.Remove(fn) }()
-	if err := Default(nil).Url(addr).Download(fn); err != nil {
+	if err := Default(nil).Url(addr).Download(&fn); err != nil {
 		t.Fatal(err)
 	}
 }
