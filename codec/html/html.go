@@ -27,7 +27,7 @@ func Struct(out any, selection string, options StructOptions) Process {
 }
 
 // Map 将HTML解析为Map, out 必须为 *any
-func Map(out *any, field MapField, params map[string]string) Process {
+func Map(out *[]any, field MapField, params map[string]string) Process {
 	return Html(func(s *goquery.Selection) (err error) {
 		*out, err = BindMapField(s, field, params)
 		return
