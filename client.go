@@ -44,3 +44,17 @@ func UseClient(client *http.Client) Option {
 		return nil
 	}
 }
+
+// TryIdempotent 幂等重试
+func TryIdempotent(base time.Duration, maxTimes int) Option {
+	trys := make([]time.Duration, maxTimes)
+	for i := 0; i < maxTimes; i++ {
+		trys[i] = base * (1 << i)
+	}
+	return func(r *Request) error {
+		if len(trys) > 0 {
+			r.TryAt(trys...)
+		}
+		return nil
+	}
+}
