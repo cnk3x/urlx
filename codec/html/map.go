@@ -1,6 +1,7 @@
 package html
 
 import (
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,7 +43,11 @@ func bindMapField(doc *goquery.Selection, params map[string]string, field MapFie
 	}
 
 	var s string
-	if field.Value == "" {
+	if field.Value != "" {
+		s = ReplaceTemplate(field.Value, params)
+	}
+
+	if s == "" {
 		if !iter && field.List {
 			var out []any
 			var err error
@@ -87,7 +92,18 @@ func bindMapField(doc *goquery.Selection, params map[string]string, field MapFie
 			var err error
 			for _, child := range field.Fields {
 				if fieldItem, ex := bindMapField(doc, params, child, false); ex == nil {
-					out[child.Name] = fieldItem
+					if !isZero(fieldItem) {
+						if child.List {
+							o := out[child.Name]
+							if isZero(o) {
+								out[child.Name] = fieldItem
+							} else {
+								out[child.Name] = append(o.([]any), fieldItem.([]any)...)
+							}
+						} else {
+							out[child.Name] = fieldItem
+						}
+					}
 				} else {
 					err = ex
 					break
@@ -104,8 +120,6 @@ func bindMapField(doc *goquery.Selection, params map[string]string, field MapFie
 		default:
 			s, _ = doc.Attr(field.Attr)
 		}
-	} else {
-		s = ReplaceTemplate(field.Value, params)
 	}
 
 	if s = strings.TrimSpace(s); s != "" {
@@ -142,4 +156,11 @@ func bindMapField(doc *goquery.Selection, params map[string]string, field MapFie
 	}
 
 	return "", nil
+}
+
+func isZero(v any) bool {
+	if v == nil {
+		return true
+	}
+	return reflect.ValueOf(v).IsZero()
 }
