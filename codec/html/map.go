@@ -91,16 +91,19 @@ func bindMapField(doc *goquery.Selection, params map[string]string, field MapFie
 			out := map[string]any{}
 			var err error
 			for _, child := range field.Fields {
+				o := out[child.Name]
+				oz := isZero(o)
+				if !child.List && !oz {
+					continue
+				}
 				if fieldItem, ex := bindMapField(doc, params, child, false); ex == nil {
 					if !isZero(fieldItem) {
-						if child.List {
-							o := out[child.Name]
-							if isZero(o) {
-								out[child.Name] = fieldItem
-							} else {
-								out[child.Name] = append(o.([]any), fieldItem.([]any)...)
-							}
-						} else {
+						switch {
+						case child.List && oz:
+							out[child.Name] = fieldItem
+						case child.List:
+							out[child.Name] = append(o.([]any), fieldItem.([]any)...)
+						default:
 							out[child.Name] = fieldItem
 						}
 					}
