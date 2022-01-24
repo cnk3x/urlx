@@ -8,11 +8,12 @@ rm -rf .temp/gitee
 mkdir -p .temp/gitee
 cd .temp/gitee
 git clone git@gitee.com:k3x/urlx.git .
+rm -rf *
+rm -rf .vscode .gitignore
 
 cd ../../
 cp -r * .temp/gitee
 cp .gitignore .temp/gitee
-cp -r .vscode .temp/gitee
 
 cd .temp/gitee
 rm gitee.sh
